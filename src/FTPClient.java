@@ -47,20 +47,77 @@ public class FTPClient {
             boolean loop = true;
             Scanner scan = new Scanner(System.in);
             String command = null;
+            String menuFormat = "%-23s%s\n";
 
             while (loop) {
-                System.out.println("Please enter a command, only \"quit\" supported so far.");
-                command = scan.next();
+                System.out.println("\nPlease enter a command:");
+                System.out.printf(menuFormat ,"ls", "List the files in the current directory on the remote server.");
+                System.out.printf(menuFormat, "cd remote-dir", "Change the current directory to \"remote-dir\" on the remote server.");
+                System.out.printf(menuFormat, "put local-file", "Upload the file \"local-file\" from the local machine to the remote server.");
+                System.out.printf(menuFormat, "get remote-file", "Download the file \"remote-file\" from the remote server to the local machine.");
+                System.out.printf(menuFormat, "delete remote-file", "Delete the file \"remote-file\" from the remote server.");
+                System.out.printf(menuFormat, "quit", "Quit the FTP client.");
+                command = scan.nextLine();
 
-                if (command.equalsIgnoreCase("quit")) {
+                if (command.equals("ls")) {
+                    list();
+                }
+                else if (command.startsWith("cd")) {
+                    cd(command);
+                }
+                else if (command.startsWith("put ")) {
+                    put(command);
+                }
+                else if (command.startsWith("get ")) {
+                    get(command);
+                }
+                else if (command.startsWith("delete ")) {
+                    delete(command);
+                }
+                else if (command.equals("quit")) {
+                    disconnect();
                     loop = false;
                 }
                 else {
-                    System.out.println("Error: " + command + " not supported!");
+                    System.out.println(command + " is not a valid command.");
                 }
 
             }
         }
+
+    }
+
+    private void list() {
+
+    }
+
+    private void cd(String command) {
+
+        // make sure a remote directory was provided
+        if (command.trim().length() < 4) {
+            System.out.println("Error: Must specify remote-dir to switch to for cd command.");
+            return;
+        }
+
+        String directory = command.substring(3);
+
+        sendCommand("CWD " + directory);
+        System.out.println(receiveResponseLine());
+    }
+
+    private void put(String command) {
+
+    }
+
+    private void get(String command) {
+
+    }
+
+    private void delete(String command) {
+
+    }
+
+    private void disconnect() {
 
     }
 
