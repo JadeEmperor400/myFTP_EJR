@@ -65,13 +65,13 @@ public class FTPClient {
                 else if (command.startsWith("cd")) {
                     cd(command);
                 }
-                else if (command.startsWith("put ")) {
+                else if (command.startsWith("put")) {
                     put(command);
                 }
-                else if (command.startsWith("get ")) {
+                else if (command.startsWith("get")) {
                     get(command);
                 }
-                else if (command.startsWith("delete ")) {
+                else if (command.startsWith("delete")) {
                     delete(command);
                 }
                 else if (command.equals("quit")) {
