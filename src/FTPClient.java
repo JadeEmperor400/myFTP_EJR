@@ -2,12 +2,15 @@ import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 public class FTPClient {
 
     private BufferedReader streamFromServer;
     private BufferedWriter streamToServer;
     private static final int FTP_PORT = 21;
+    private String server;
+    private Socket dataConnection;
 
     public static void main(String[] args) {
         FTPClient client = new FTPClient();
@@ -15,7 +18,8 @@ public class FTPClient {
 
     }
 
-    public void start(String server) {
+    public void start(String serverVal) {
+    	this.server = serverVal;
         Socket s = new Socket();
         InetSocketAddress addr = new InetSocketAddress(server, FTP_PORT);
         try {
@@ -62,6 +66,10 @@ public class FTPClient {
                 if (command.equals("ls")) {
                     list();
                 }
+                else if(command.equals("pwd")) {
+                	sendCommand("PWD");
+                	System.out.println(receiveResponseLine());
+                }
                 else if (command.startsWith("cd")) {
                     cd(command);
                 }
@@ -78,8 +86,12 @@ public class FTPClient {
                     disconnect();
                     loop = false;
                 }
-                else {
+                /*else {
                     System.out.println(command + " is not a valid command.");
+                }*/
+                else {
+                	sendCommand(command);
+                	System.out.println(receiveResponseLine());
                 }
 
             }
@@ -88,7 +100,56 @@ public class FTPClient {
     }
 
     private void list() {
-
+    	/*sendCommand("PASV");
+    	String response = receiveResponseLine();
+    	System.out.println(response);
+    	
+    	int port = getPort(response);
+    	
+    	/*
+    	Socket sock = new Socket();
+        InetSocketAddress address = new InetSocketAddress(server, port);
+        BufferedReader fromServ;
+        BufferedWriter toServ;*/
+        try {
+            /*sock.connect(address);
+            System.out.println("Connected to " + server + " for a data connection");
+            fromServ = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+            toServ = new BufferedWriter(new OutputStreamWriter(sock.getOutputStream()));
+            */
+        	BufferedReader fromServ = dataConnection("LIST");
+        	
+            sendCommand("LIST");
+            System.out.println(receiveResponseLine());
+            
+            System.out.println(fromServ.lines().collect(Collectors.joining(System.lineSeparator())));  
+            
+            System.out.println(receiveResponseLine());
+            
+        }
+        catch (Exception e) {
+        	System.out.println(e);
+            System.out.println("Error: Could not connect to server");
+            System.exit(1);
+        }
+    }
+    
+    private BufferedReader dataConnection(String command) throws IOException {
+    	sendCommand("PASV");
+    	String response = receiveResponseLine();
+    	System.out.println(response);
+    	
+    	int port = getPort(response);
+    	
+    	
+    	Socket sock = new Socket();
+        InetSocketAddress address = new InetSocketAddress(server, port);
+        BufferedReader fromServ;
+        
+        sock.connect(address);
+        fromServ = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+        
+        return fromServ;
     }
 
     private void cd(String command) {
@@ -105,16 +166,67 @@ public class FTPClient {
         System.out.println(receiveResponseLine());
     }
 
+    
+    
+    
     private void put(String command) {
-
+    	String file = command.substring(command.indexOf(" "));
+    	command = "STOR"+file;
+    	
+    	try {
+    		BufferedReader fromServ = dataConnection(command);
+    		
+    		sendCommand(command);
+    		System.out.println(receiveResponseLine());
+    		System.out.println("here1");
+    		//System.out.println(fromServ.lines().collect(Collectors.joining(System.lineSeparator())));
+    		System.out.println(fromServ.readLine());
+    		System.out.println("here2");
+    		System.out.println(receiveResponseLine());
+    	}
+    	catch(Exception e) {
+    		System.out.println(e);
+    		System.exit(1);
+    	}
     }
 
+    
+    
+    
     private void get(String command) {
-
+    	String file = command.substring(command.indexOf(" "));
+    	command = "RETR"+file;
+    	System.out.println("here");
+    	try {
+    		BufferedReader fromServ = dataConnection(command);
+    		
+    		
+    		sendCommand(command);
+    		System.out.println(receiveResponseLine());
+    		
+    		System.out.println(fromServ.lines().collect(Collectors.joining(System.lineSeparator())));
+    		
+    		
+    		System.out.println(receiveResponseLine());
+    		
+    	}
+    	catch(Exception e) {
+    		System.out.println(e);
+    		System.exit(1);
+    	}
     }
 
     private void delete(String command) {
-
+        if (command.trim().length() <8) {
+            System.out.println("Error: Must specify a file or directory to delete.");
+            return;
+        }
+        
+        String file = command.substring( 7);
+        
+        sendCommand("DELE " + file);
+        
+        System.out.println(receiveResponseLine());
     }
 
     private void disconnect() {
@@ -140,10 +252,42 @@ public class FTPClient {
         try {
             response = streamFromServer.readLine();
         }
-        catch (IOException e) {
+        catch (Exception e) {
             // print error
         }
 
         return response;
     }
+    
+    private int getPort(String response) {
+    	int index1 = response.indexOf("(");
+    	int index2 = response.indexOf(")");
+    	response = response.substring(index1,index2);
+    	//System.out.println(response);
+    	
+    	int arr[] = new int[6];
+    	int startIndex = 0;
+    	int prevIndex = 0;
+    	
+    	for(int i=0; i<response.length(); i++) {
+    		if(response.charAt(i) == ',') {
+    			arr[startIndex] = Integer.parseInt(response.substring(prevIndex+1,i));
+    			prevIndex = i;
+    			startIndex++;
+    		}
+    		if(startIndex == 5) {
+    			arr[5] = Integer.parseInt(response.substring(prevIndex+1,response.length()));
+    			break;
+    		}
+    	}
+    	/*
+    	for(int i=0;i<arr.length;i++) {
+    		System.out.println(arr[i]);
+    	}
+    	*/
+    	int port = (arr[4] * 256) + arr[5];
+    	//System.out.println(port);
+    	return port;
+    }
+    
 }
