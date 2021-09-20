@@ -13,9 +13,7 @@ public class FTPClient {
 
     public static void main(String[] args) {
         FTPClient client = new FTPClient();
-        //client.start(args[0]);
-        client.start("inet.cs.fiu.edu");
-
+        client.start(args[0]);
     }
 
     public void start(String serverVal) {
