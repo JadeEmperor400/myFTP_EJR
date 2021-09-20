@@ -4,7 +4,7 @@ import java.net.Socket;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 
-public class FTPClient {
+public class myftp {
 
     private BufferedReader streamFromServer;
     private BufferedWriter streamToServer;
@@ -12,7 +12,7 @@ public class FTPClient {
     private String server;
 
     public static void main(String[] args) {
-        FTPClient client = new FTPClient();
+        myftp client = new myftp();
         client.start(args[0]);
     }
 
