@@ -18,6 +18,7 @@ public class FTPClient {
     }
 
     public void start(String serverVal) {
+    	boolean login = false;
     	this.server = serverVal;
         Socket s = new Socket();
         InetSocketAddress addr = new InetSocketAddress(server, FTP_PORT);
@@ -36,69 +37,80 @@ public class FTPClient {
         // welcome message from server
         System.out.println(receiveResponseLine());
 
-        // send user name
-        sendCommand("USER demo");
-        System.out.println(receiveResponseLine());
+        while(!login) {
+	        // send user name
+	        System.out.println("FTP Username: ");
+	        Scanner scan = new Scanner(System.in);
+	        String user = scan.nextLine();
+	        sendCommand("USER " + user);
+	        System.out.println(receiveResponseLine());
+        
+	        // send password
+	        System.out.println("Password: ");
+	        user = scan.nextLine();
+	        sendCommand("PASS " + user);
+	        String response = receiveResponseLine();
+	        System.out.println(response);
 
-        // send password
-        sendCommand("PASS demopass");
-        String response = receiveResponseLine();
-        System.out.println(response);
-
-        // 230 means login successful
-        if (response.startsWith("230")) {
-            boolean loop = true;
-            Scanner scan = new Scanner(System.in);
-            String command = null;
-            String menuFormat = "%-23s%s\n";
-            System.out.println("\nPlease enter a command:");
-            System.out.printf(menuFormat ,"ls", "List the files in the current directory on the remote server.");
-            System.out.printf(menuFormat, "cd remote-dir", "Change the current directory to \"remote-dir\" on the remote server.");
-            System.out.printf(menuFormat, "put local-file", "Upload the file \"local-file\" from the local machine to the remote server.");
-            System.out.printf(menuFormat, "get remote-file", "Download the file \"remote-file\" from the remote server to the local machine.");
-            System.out.printf(menuFormat, "delete remote-file", "Delete the file \"remote-file\" from the remote server.");
-            System.out.printf(menuFormat, "quit", "Quit the FTP client.");
-
-            while (loop) {
-            	System.out.println("\nPlease enter a command:");
-                command = scan.nextLine();
-
-                if (command.equals("ls")) {
-                    list();
-                }
-                else if(command.equals("pwd")) {
-                	sendCommand("PWD");
-                	System.out.println(receiveResponseLine());
-                }
-                else if (command.startsWith("cd")) {
-                    cd(command);
-                }
-                else if (command.startsWith("put")) {
-                    put(command);
-                }
-                else if (command.startsWith("get")) {
-                    get(command);
-                }
-                else if (command.startsWith("delete")) {
-                    delete(command);
-                }
-                else if (command.equals("quit")) {
-                    disconnect();
-                    loop = false;
-                }
-                /*else {
-                    System.out.println(command + " is not a valid command.");
-                }*/
-                else {
-                	sendCommand(command);
-                	System.out.println(receiveResponseLine());
-                }
-
-            }
+	        // 230 means login successful
+	        if (response.startsWith("230")) {
+	        	login = true;
+	            boolean loop = true;
+	            scan = new Scanner(System.in);
+	            String command = null;
+	            String menuFormat = "%-23s%s\n";
+	            System.out.printf(menuFormat ,"ls", "List the files in the current directory on the remote server.");
+	            System.out.printf(menuFormat, "cd remote-dir", "Change the current directory to \"remote-dir\" on the remote server.");
+	            System.out.printf(menuFormat, "put local-file", "Upload the file \"local-file\" from the local machine to the remote server.");
+	            System.out.printf(menuFormat, "get remote-file", "Download the file \"remote-file\" from the remote server to the local machine.");
+	            System.out.printf(menuFormat, "delete remote-file", "Delete the file \"remote-file\" from the remote server.");
+	            System.out.printf(menuFormat, "quit", "Quit the FTP client.");
+	
+	            while (loop) {
+	            	System.out.println("\nPlease enter a command:");
+	                command = scan.nextLine();
+	                System.out.println("");
+	
+	                if (command.equals("ls")) {
+	                    list();
+	                }
+	                else if(command.equals("pwd")) {
+	                	sendCommand("PWD");
+	                	System.out.println(receiveResponseLine());
+	                }
+	                else if (command.startsWith("cd")) {
+	                    cd(command);
+	                }
+	                else if (command.startsWith("put")) {
+	                    put(command);
+	                }
+	                else if (command.startsWith("get")) {
+	                    get(command);
+	                }
+	                else if (command.startsWith("delete")) {
+	                    delete(command);
+	                }
+	                else if (command.equals("quit")) {
+	                    disconnect();
+	                    loop = false;
+	                }
+	                else {
+	                    System.out.println(command + " is not a valid command.");
+	                }
+	                
+	
+	            }
+	        }
+	        else {
+	        	System.out.println("Login failed. Please try again.");
+	        }
+	        
         }
 
     }
 
+    
+    
     private void list() {
         try {  
         	Socket sock = dataSocket();
