@@ -156,6 +156,7 @@ public class myftp {
     private void put(String command) {
         String filepath = command.substring(command.indexOf(" ") + 1);
         command = "STOR " + filepath;
+        int bytesTransferred = 0;
 
         try {
             Socket sock = passiveDataSocket();
@@ -163,9 +164,10 @@ public class myftp {
             sendCommand(command);
             System.out.println(receiveResponseLine());
 
-            fileStream(sock, filepath, "", "put");
+            bytesTransferred = fileStream(sock, filepath, "", "put");
 
             System.out.println(receiveResponseLine());
+            System.out.println("Transferred " + bytesTransferred + " bytes.");
         }
         catch (Exception e) {
             System.out.println(e);
@@ -177,6 +179,7 @@ public class myftp {
     private void get(String command) {
         String filepath = command.substring(command.indexOf(" ") + 1);
         command = "RETR " + filepath;
+        int bytesTransferred = 0;
 
         try {
             Socket sock = passiveDataSocket();
@@ -185,9 +188,10 @@ public class myftp {
             String reply = receiveResponseLine();
             System.out.println(reply);
 
-            fileStream(sock, filepath, reply, "get");
+            bytesTransferred = fileStream(sock, filepath, reply, "get");
 
             System.out.println(receiveResponseLine());
+            System.out.println("Transferred " + bytesTransferred + " bytes.");
 
         }
         catch (Exception e) {
@@ -199,7 +203,7 @@ public class myftp {
 
     //Depending on the type (get or put) this will either send the contents of a file to the server stream or
     //will retrieve the contents of a file from the server stream and save them to a file
-    private void fileStream(Socket sock, String filepath, String reply, String type) throws IOException {
+    private int fileStream(Socket sock, String filepath, String reply, String type) throws IOException {
         File file = new File(filepath);
         BufferedInputStream input;
         BufferedOutputStream output;
@@ -211,7 +215,9 @@ public class myftp {
             output = new BufferedOutputStream(new FileOutputStream(file));
 
             buffer = new byte[bufferSize(reply)];
-        } else {
+        }
+        // "put" command
+        else {
             input = new BufferedInputStream(new FileInputStream(file));
             output = new BufferedOutputStream(sock.getOutputStream());
 
@@ -230,6 +236,8 @@ public class myftp {
         input.close();
         output.close();
         sock.close();
+
+        return buffer.length;
     }
 
 
