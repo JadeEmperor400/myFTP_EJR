@@ -1,8 +1,10 @@
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class myftp {
 
@@ -13,11 +15,11 @@ public class myftp {
 
     public static void main(String[] args) {
         myftp client = new myftp();
-        client.start(args[0]);
+        //client.start(args[0]);
+        client.start("inet.cs.fiu.edu");
     }
 
     public void start(String serverVal) {
-        boolean loggedIn = false;
         this.server = serverVal;
         Socket s = new Socket();
         InetSocketAddress addr = new InetSocketAddress(server, FTP_PORT);
@@ -25,8 +27,7 @@ public class myftp {
             s.connect(addr);
             streamFromServer = new BufferedReader(new InputStreamReader(s.getInputStream()));
             streamToServer = new BufferedWriter(new OutputStreamWriter(s.getOutputStream()));
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             System.out.println("Error: Could not connect to server");
             System.exit(1);
         }
@@ -36,26 +37,24 @@ public class myftp {
         // welcome message from server
         System.out.println(receiveResponseLine());
 
-        while (!loggedIn) {
-            // send user name
-            System.out.println("FTP Username: ");
-            Scanner scan = new Scanner(System.in);
-            String user = scan.nextLine();
-            sendCommand("USER " + user);
-            System.out.println(receiveResponseLine());
+        // send user name
+        System.out.print("FTP Username: ");
+        Scanner scan = new Scanner(System.in);
+        String user = scan.nextLine();
+        sendCommand("USER " + user);
+        System.out.println(receiveResponseLine());
 
-            // send password
-            System.out.println("Password: ");
-            user = scan.nextLine();
-            sendCommand("PASS " + user);
-            String response = receiveResponseLine();
-            System.out.println(response);
+        // send password
+        System.out.print("Password: ");
+        user = scan.nextLine();
+        sendCommand("PASS " + user);
+        String response = receiveResponseLine();
+        System.out.println(response);
 
-            // 230 means login successful
-            if (response.startsWith("230"))
-                loggedIn = true;
-            else
-                System.out.println("Login failed. Please try again.");
+        // 230 means login successful
+        if (!response.startsWith("230")) {
+            System.out.println("Login failed.");
+            System.exit(1);
         }
 
         String menuFormat = "%-23s%s\n";
@@ -68,7 +67,7 @@ public class myftp {
 
         String command;
         boolean loop = true;
-        Scanner scan = new Scanner(System.in);
+        scan = new Scanner(System.in);
 
         while (loop) {
             System.out.println("\nPlease enter a command:");
@@ -104,14 +103,23 @@ public class myftp {
             BufferedReader fromServ = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 
             sendCommand("LIST");
+            long start = System.currentTimeMillis();
             System.out.println(receiveResponseLine());
 
-            System.out.println(fromServ.lines().collect(Collectors.joining(System.lineSeparator())));
 
+            Stream linesStream = fromServ.lines();
+            long end = System.currentTimeMillis();
+            String data = (String)linesStream.collect(Collectors.joining(System.lineSeparator()));
+            int bytes = data.getBytes(StandardCharsets.US_ASCII).length;
+            System.out.println(data);
             System.out.println(receiveResponseLine());
 
-        }
-        catch (Exception e) {
+            double seconds = (end - start) / 1000.0;
+
+            TransmissionInfo ti = new TransmissionInfo(start, end, bytes);
+            System.out.println(ti.bytes + " received in " + ti.seconds + "seconds " + ti.kbps + "Kbytes/sec.");
+
+        } catch (Exception e) {
             System.out.println(e);
             System.out.println("Error: Could not connect to server");
             System.exit(1);
@@ -168,8 +176,7 @@ public class myftp {
 
             System.out.println(receiveResponseLine());
             System.out.println("Transferred " + bytesTransferred + " bytes.");
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             System.out.println(e);
             System.exit(1);
         }
@@ -193,8 +200,7 @@ public class myftp {
             System.out.println(receiveResponseLine());
             System.out.println("Transferred " + bytesTransferred + " bytes.");
 
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             System.out.println(e);
             System.exit(1);
         }
@@ -292,8 +298,7 @@ public class myftp {
         try {
             streamToServer.write(command + "\r\n");
             streamToServer.flush();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             // print error
         }
     }
@@ -304,8 +309,7 @@ public class myftp {
 
         try {
             response = streamFromServer.readLine();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             System.out.println(e);
         }
 
@@ -337,6 +341,21 @@ public class myftp {
         int port = (arr[4] * 256) + arr[5];
 
         return port;
+    }
+
+    private class TransmissionInfo {
+        int bytes;
+        double seconds;
+        double kbps;
+
+        TransmissionInfo(long start, long end, int bytes) {
+            seconds = (end - start) / 1000.0;
+            this.bytes = bytes;
+            kbps = bytes/1000.0/ seconds;
+        }
+
+
+
     }
 
 }
