@@ -15,8 +15,7 @@ public class myftp {
 
     public static void main(String[] args) {
         myftp client = new myftp();
-        //client.start(args[0]);
-        client.start("inet.cs.fiu.edu");
+        client.start(args[0]);
     }
 
     public void start(String serverVal) {
@@ -103,21 +102,19 @@ public class myftp {
             BufferedReader fromServ = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 
             sendCommand("LIST");
+
             long start = System.currentTimeMillis();
-            System.out.println(receiveResponseLine());
-
-
             Stream linesStream = fromServ.lines();
             long end = System.currentTimeMillis();
+
+            System.out.println(receiveResponseLine());
             String data = (String)linesStream.collect(Collectors.joining(System.lineSeparator()));
-            int bytes = data.getBytes(StandardCharsets.US_ASCII).length;
             System.out.println(data);
+
             System.out.println(receiveResponseLine());
 
-            double seconds = (end - start) / 1000.0;
 
-            TransmissionInfo ti = new TransmissionInfo(start, end, bytes);
-            System.out.println(ti.bytes + " received in " + ti.seconds + "seconds " + ti.kbps + "Kbytes/sec.");
+            printTransmissionInfo(start, end, data.getBytes().length);
 
         } catch (Exception e) {
             System.out.println(e);
@@ -343,19 +340,12 @@ public class myftp {
         return port;
     }
 
-    private class TransmissionInfo {
-        int bytes;
-        double seconds;
-        double kbps;
+    private void printTransmissionInfo(long start, long end, int bytes) {
+        double seconds = (end - start) / 1000.0;
+        double kbps = bytes/1000.0/ seconds;
 
-        TransmissionInfo(long start, long end, int bytes) {
-            seconds = (end - start) / 1000.0;
-            this.bytes = bytes;
-            kbps = bytes/1000.0/ seconds;
-        }
-
-
-
+        System.out.println(bytes + " bytes transferred in " + seconds + "seconds " + kbps + "Kbytes/sec.");
     }
+
 
 }
