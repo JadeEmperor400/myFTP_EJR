@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -103,9 +102,7 @@ public class myftp {
 
             sendCommand("LIST");
 
-            long start = System.currentTimeMillis();
             Stream linesStream = fromServ.lines();
-            long end = System.currentTimeMillis();
 
             System.out.println(receiveResponseLine());
             String data = (String)linesStream.collect(Collectors.joining(System.lineSeparator()));
@@ -114,7 +111,7 @@ public class myftp {
             System.out.println(receiveResponseLine());
 
 
-            printTransmissionInfo(start, end, data.getBytes().length);
+            System.out.println(data.getBytes().length + " bytes received");
 
         } catch (Exception e) {
             System.out.println(e);
@@ -161,7 +158,14 @@ public class myftp {
     private void put(String command) {
         String filepath = command.substring(command.indexOf(" ") + 1);
         command = "STOR " + filepath;
-        int bytesTransferred = 0;
+        long bytesTransferred;
+
+        File f = new File(filepath);
+
+        if (!f.exists()) {
+            System.out.println(filepath + ": File not found");
+            return;
+        }
 
         try {
             Socket sock = passiveDataSocket();
@@ -169,7 +173,7 @@ public class myftp {
             sendCommand(command);
             System.out.println(receiveResponseLine());
 
-            bytesTransferred = fileStream(sock, filepath, "", "put");
+            bytesTransferred = transferFile(sock, filepath, "put");
 
             System.out.println(receiveResponseLine());
             System.out.println("Transferred " + bytesTransferred + " bytes.");
@@ -183,7 +187,7 @@ public class myftp {
     private void get(String command) {
         String filepath = command.substring(command.indexOf(" ") + 1);
         command = "RETR " + filepath;
-        int bytesTransferred = 0;
+        long bytesTransferred;
 
         try {
             Socket sock = passiveDataSocket();
@@ -192,13 +196,19 @@ public class myftp {
             String reply = receiveResponseLine();
             System.out.println(reply);
 
-            bytesTransferred = fileStream(sock, filepath, reply, "get");
+            if (!reply.startsWith("150")) {
+                sock.close();
+                return;
+            }
+
+            bytesTransferred = transferFile(sock, filepath, "get");
 
             System.out.println(receiveResponseLine());
             System.out.println("Transferred " + bytesTransferred + " bytes.");
 
         } catch (Exception e) {
             System.out.println(e);
+            e.printStackTrace();
             System.exit(1);
         }
     }
@@ -206,29 +216,31 @@ public class myftp {
 
     //Depending on the type (get or put) this will either send the contents of a file to the server stream or
     //will retrieve the contents of a file from the server stream and save them to a file
-    private int fileStream(Socket sock, String filepath, String reply, String type) throws IOException {
+    private long transferFile(Socket sock, String filepath, String type) throws IOException {
         File file = new File(filepath);
         BufferedInputStream input;
         BufferedOutputStream output;
-        byte[] buffer;
+        byte[] buffer = new byte[256];
+        long bytesTransferred = 0;
         int numRead;
 
         if (type.equals("get")) {
             input = new BufferedInputStream(sock.getInputStream());
             output = new BufferedOutputStream(new FileOutputStream(file));
 
-            buffer = new byte[bufferSize(reply)];
+            //buffer = new byte[bufferSize(reply)];
         }
         // "put" command
         else {
             input = new BufferedInputStream(new FileInputStream(file));
             output = new BufferedOutputStream(sock.getOutputStream());
 
-            buffer = new byte[(int) file.length()];
+            //buffer = new byte[(int) file.length()];
         }
 
 
         while ((numRead = input.read(buffer)) >= 0) {
+            bytesTransferred += numRead;
             output.write(buffer, 0, numRead);
         }
 
@@ -240,7 +252,7 @@ public class myftp {
         output.close();
         sock.close();
 
-        return buffer.length;
+        return bytesTransferred;
     }
 
 
@@ -339,13 +351,4 @@ public class myftp {
 
         return port;
     }
-
-    private void printTransmissionInfo(long start, long end, int bytes) {
-        double seconds = (end - start) / 1000.0;
-        double kbps = bytes/1000.0/ seconds;
-
-        System.out.println(bytes + " bytes transferred in " + seconds + "seconds " + kbps + "Kbytes/sec.");
-    }
-
-
 }
