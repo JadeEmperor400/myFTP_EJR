@@ -14,7 +14,7 @@ public class myftp {
 
     public static void main(String[] args) {
 
-        if (args.length != 2) {
+        if (args.length != 1) {
             System.out.println("Usage: myftp ftp_server_name");
             return;
         }
