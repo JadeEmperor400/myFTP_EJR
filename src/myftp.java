@@ -13,6 +13,11 @@ public class myftp {
     private String server;
 
     public static void main(String[] args) {
+
+        if (args.length != 2) {
+            System.out.println("Usage: myftp ftp_server_name");
+            return;
+        }
         myftp client = new myftp();
         client.start(args[0]);
     }
@@ -196,6 +201,7 @@ public class myftp {
             String reply = receiveResponseLine();
             System.out.println(reply);
 
+            // 150 is success code
             if (!reply.startsWith("150")) {
                 sock.close();
                 return;
@@ -208,7 +214,6 @@ public class myftp {
 
         } catch (Exception e) {
             System.out.println(e);
-            e.printStackTrace();
             System.exit(1);
         }
     }
@@ -227,15 +232,11 @@ public class myftp {
         if (type.equals("get")) {
             input = new BufferedInputStream(sock.getInputStream());
             output = new BufferedOutputStream(new FileOutputStream(file));
-
-            //buffer = new byte[bufferSize(reply)];
         }
         // "put" command
         else {
             input = new BufferedInputStream(new FileInputStream(file));
             output = new BufferedOutputStream(sock.getOutputStream());
-
-            //buffer = new byte[(int) file.length()];
         }
 
 
@@ -262,44 +263,33 @@ public class myftp {
         String response = receiveResponseLine();
         System.out.println(response);
 
+        String ip = getIP(response);
         int port = getPort(response);
 
 
         Socket sock = new Socket();
-        InetSocketAddress address = new InetSocketAddress(server, port);
+        InetSocketAddress address = new InetSocketAddress(ip, port);
 
         sock.connect(address);
 
         return sock;
     }
 
+    //parses the reply from PASV in order to get the correct ip address
+    private String getIP(String response) {
+        response = response.split("[(]")[1];
+        response = response.substring(0, response.length()-2);
 
-    //parses the reply from server in order to retrieve the size of the buffer
-    private int bufferSize(String reply) {
-        int size = 0;
-        String str = "";
+        Scanner scan = new Scanner(response);
+        scan.useDelimiter("[,]");
 
-        for (int i = reply.length() - 1; i >= 0; i--) {
-            if (reply.charAt(i) == '(') {
-                str = reply.substring(i + 1);
-                break;
-            }
-        }
-        int endIndex = 0;
+        String serv = "";
+        for(int i = 0; i < 4; ++i)
+            serv += scan.next() + ".";
+        serv = serv.substring(0,serv.length() - 1);
 
-        for (int i = 0; i < str.length(); i++) {
-            if (str.charAt(i) == ' ') {
-                endIndex = i;
-                break;
-            }
-        }
-
-        str = str.substring(0, endIndex);
-        size = Integer.parseInt(str);
-
-        return size;
+        return serv;
     }
-
 
     // send command over control socket
     private void sendCommand(String command) {
@@ -308,7 +298,8 @@ public class myftp {
             streamToServer.write(command + "\r\n");
             streamToServer.flush();
         } catch (IOException e) {
-            // print error
+            System.out.println("Error: Communication error with server");
+            System.exit(1);
         }
     }
 
@@ -319,7 +310,8 @@ public class myftp {
         try {
             response = streamFromServer.readLine();
         } catch (Exception e) {
-            System.out.println(e);
+            System.out.println("Error: Communication error with server");
+            System.exit(1);
         }
 
         return response;
